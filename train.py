@@ -12,6 +12,23 @@ from datetime import datetime
 from tensorflow.keras import datasets, layers, models, callbacks, optimizers
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+class EpochCallback(callbacks.Callback):
+    best_accuracy = 0.0
+    def on_epoch_end(self, epoch, logs={}):
+        print(json.dumps({
+            'epoch':epoch,
+            'training_accuracy': str(logs['accuracy']),
+            'training_loss': str(logs['loss']),
+            'validated_accuracy': str(logs['val_accuracy']),
+            'validated_loss': str(logs['val_loss'])
+            }))
+        if EpochCallback.best_accuracy < logs['val_accuracy']:
+            if not os.path.exists(MODEL_DIR):
+                os.makedirs(MODEL_DIR)
+            filepath = MODEL_DIR + '/model-%s-acc-%s-size-%s.h5' % (datetime.now().strftime("%Y%m%d-%H%M%S"), str(logs['val_accuracy']), args.image_size)
+            model.save(filepath)
+            EpochCallback.best_accuracy = logs['val_accuracy'] 
+
 tf.random.set_seed(1234)
 
 parser = argparse.ArgumentParser()
@@ -47,55 +64,3 @@ for img in tqdm(os.listdir(path=TRAIN_DIR,)[:args.images_count]):
         path_to_img = os.path.join(TRAIN_DIR,img)
         img = cv2.resize(cv2.imread(path_to_img,cv2.IMREAD_COLOR),(args.image_size,args.image_size))
         full_data.append([img,img_label])
-
-train_data = full_data[:-args.validation_count]
-test_data = full_data[-args.validation_count:]
-
-train_images = np.array([i[0] for i in train_data])
-train_labels = np.array([i[1] for i in train_data])
-test_images = np.array([i[0] for i in test_data])
-test_labels = np.array([i[1] for i in test_data])
-
-model = models.Sequential()
-model.add(layers.Conv2D(args.filter_count, (3, 3), activation='relu', input_shape=(args.image_size, args.image_size, 3)))
-model.add(layers.Flatten())
-model.add(layers.Dense(args.dense_size, activation='relu'))
-model.add(layers.Dense(2, activation='softmax'))
-
-model.compile(
-    optimizer=optimizers.RMSprop(lr=args.learning_rate),
-    loss='categorical_crossentropy',
-    metrics=['accuracy'],
-    batch_size=args.batch_size,
-    )
-model.summary()
-
-class EpochCallback(callbacks.Callback):
-    best_accuracy = 0.0
-    def on_epoch_end(self, epoch, logs={}):
-        print(json.dumps({
-            'epoch':epoch,
-            'training_accuracy': str(logs['accuracy']),
-            'training_loss': str(logs['loss']),
-            'validated_accuracy': str(logs['val_accuracy']),
-            'validated_loss': str(logs['val_loss'])
-            }))
-        if EpochCallback.best_accuracy < logs['val_accuracy']:
-            if not os.path.exists(MODEL_DIR):
-                os.makedirs(MODEL_DIR)
-            filepath = MODEL_DIR + '/model-%s-acc-%s-size-%s.h5' % (datetime.now().strftime("%Y%m%d-%H%M%S"), str(logs['val_accuracy']), args.image_size)
-            model.save(filepath)
-            EpochCallback.best_accuracy = logs['val_accuracy']  
-
-epoch_callback = EpochCallback()
-
-model.fit(
-    x=train_images, 
-    y=train_labels, 
-    batch_size=args.batch_size, 
-    epochs=args.epochs, 
-    verbose=False, 
-    callbacks=[epoch_callback], 
-    validation_data=(test_images, test_labels), 
-    shuffle=True,
-)
