@@ -1,0 +1,93 @@
+---
+
+- step:
+    name: train
+    image: juhavalohai/workshop:tf-gpu2
+    command:
+      - unzip -q -j /valohai/inputs/training_data/catsdogs2.zip -d /valohai/repository/training_data
+      - python train.py {parameters}
+    parameters:
+      - name: epochs
+        pass-as: -epochs={v}
+        description: Number of epochs
+        type: integer
+        default: 50
+      - name: learning_rate
+        pass-as: -learning_rate={v}
+        description: Initial learning rate
+        type: float
+        default: 0.001
+      - name: batch_size
+        pass-as: -batch_size={v}
+        description: How many images per batch
+        type: integer
+        default: 100
+      - name: validation_count
+        pass-as: -validation_count={v}
+        description: How many images for validation
+        type: integer
+        default: 1000
+      - name: filter_count
+        pass-as: -filter_count={v}
+        description: Filters per layer
+        type: integer
+        default: 32
+      - name: image_size
+        pass-as: -image_size={v}
+        description: Image size
+        type: integer
+        default: 32
+      - name: images_count
+        pass-as: -images_count={v}
+        description: How many images
+        type: integer
+        default: 2000
+      - name: dense_size
+        pass-as: -dense_size={v}
+        description: Size of fully connected layer
+        type: integer
+        default: 64
+      - name: rotation
+        pass-as: -rotation={v}
+        description: Augmented rotation
+        type: float
+        default: 20.0
+      - name: shear
+        pass-as: -shear={v}
+        description: Augmented shear
+        type: float
+        default: 0.1
+      - name: zoom
+        pass-as: -zoom={v}
+        description: Augmented zoom
+        type: float
+        default: 0.2
+      - name: shift
+        pass-as: -shift={v}
+        description: Augmented shift
+        type: float
+        default: 0.1
+      - name: fill_mode
+        pass-as: -fill_mode={v}
+        description: Augmented fill_mode (nearest, wrap, reflect)
+        type: string
+        default: reflect
+    inputs:
+      - name: training_data
+        default: https://workshop-juha.s3-eu-west-1.amazonaws.com/catsdogs2.zip
+- step:
+    name: inference
+    image: juhavalohai/workshop:tf-gpu2
+    command:
+      - python inference.py {parameters}
+    parameters:
+      - name: image_size
+        pass-as: -image_size={v}
+        description: Image size
+        type: integer
+        default: 32
+    inputs:
+      - name: images
+        optional: true
+      - name: model
+        optional: true

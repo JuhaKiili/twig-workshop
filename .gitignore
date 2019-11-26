@@ -1,0 +1,14 @@
+.vscode
+*.zip
+__*
+checkpoint
+full_inference_data
+inference_data
+training_data
+.DS_Store
+.valohai
+log
+logs
+models
+train
+*.npy
