@@ -64,3 +64,62 @@ for img in tqdm(os.listdir(path=TRAIN_DIR,)[:args.images_count]):
         path_to_img = os.path.join(TRAIN_DIR,img)
         img = cv2.resize(cv2.imread(path_to_img,cv2.IMREAD_COLOR),(args.image_size,args.image_size))
         full_data.append([img,img_label])
+
+train_data = full_data[:-args.validation_count]
+test_data = full_data[-args.validation_count:]
+
+train_images = np.array([i[0] for i in train_data])
+train_labels = np.array([i[1] for i in train_data])
+test_images = np.array([i[0] for i in test_data])
+test_labels = np.array([i[1] for i in test_data])
+
+model = models.Sequential()
+model.add(layers.Conv2D(args.filter_count, (3, 3), activation='relu', input_shape=(args.image_size, args.image_size, 3)))
+model.add(layers.BatchNormalization())
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Dropout(0.25))
+
+model.add(layers.Conv2D(args.filter_count * 2, (3, 3), activation='relu'))
+model.add(layers.BatchNormalization())
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Dropout(0.25))
+
+model.add(layers.Conv2D(args.filter_count * 4, (3, 3), activation='relu'))
+model.add(layers.BatchNormalization())
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Dropout(0.25))
+
+model.add(layers.Flatten())
+model.add(layers.Dense(args.dense_size, activation='relu'))
+model.add(layers.BatchNormalization())
+model.add(layers.Dropout(0.5))
+model.add(layers.Dense(2, activation='softmax'))
+
+model.compile(
+    optimizer=optimizers.RMSprop(lr=args.learning_rate),
+    loss='categorical_crossentropy',
+    metrics=['accuracy'],
+    batch_size=args.batch_size,
+    )
+model.summary()
+
+epoch_callback = EpochCallback()
+
+datagen = ImageDataGenerator(
+    rotation_range=args.rotation,
+    shear_range=args.shear,
+    zoom_range=args.zoom,
+    horizontal_flip=True,
+    width_shift_range=args.shift,
+    height_shift_range=args.shift,
+    fill_mode="reflect"
+)
+model.fit_generator(
+    datagen.flow(train_images, train_labels, batch_size=args.batch_size),
+    steps_per_epoch=len(train_images) / args.batch_size,
+    epochs=args.epochs,
+    validation_data=(test_images, test_labels),
+    callbacks=[epoch_callback],
+    shuffle=True,
+    verbose=False,
+    )
